@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mining Truck Tank Fill Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --accent: #f6a800;
+    --fuel: #22c55e;
+    --fuel-dark: #15803d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --danger: #ef4444;
+    --blue: #38bdf8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+  }
+  header { text-align: center; margin-bottom: 24px; }
+  header h1 {
+    font-size: 2rem; font-weight: 700; letter-spacing: 3px;
+    text-transform: uppercase; color: var(--accent);
+    text-shadow: 0 0 20px rgba(246,168,0,0.4);
+  }
+  header p {
+    color: var(--muted); font-size: 1rem; letter-spacing: 1px;
+    margin-top: 4px; font-family: 'Share Tech Mono', monospace;
+  }
+  .main-grid {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 20px; width: 100%; max-width: 1160px;
+  }
+  @media (max-width: 820px) { .main-grid { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px;
+  }
+  .panel-title {
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--accent);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px; margin-bottom: 16px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  label {
+    display: block; font-size: 0.8rem; color: var(--muted);
+    letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase;
+  }
+  select, input[type="number"] {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 4px; color: var(--text);
+    font-family: 'Share Tech Mono', monospace; font-size: 1rem;
+    padding: 9px 12px; margin-bottom: 12px; outline: none;
+    transition: border-color 0.2s;
+  }
+  select:focus, input[type="number"]:focus { border-color: var(--accent); }
+
+  /* Valve section */
+  .valve-section {
+    background: rgba(56,189,248,0.04);
+    border: 1px solid rgba(56,189,248,0.2);
+    border-radius: 6px; padding: 12px; margin-bottom: 12px;
+  }
+  .valve-section label { color: var(--blue); }
+  .valve-section select { border-color: rgba(56,189,248,0.3); margin-bottom: 8px; }
+  .psi-display {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 8px 12px; margin-bottom: 8px;
+  }
+  .psi-label { font-size: 0.72rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .psi-value {
+    font-family: 'Share Tech Mono', monospace; font-size: 1.3rem;
+    color: var(--blue); font-weight: bold;
+  }
+  .psi-warn {
+    font-size: 0.72rem; color: var(--danger); letter-spacing: 1px;
+    display: none; margin-bottom: 6px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .valve-chart-wrap {
+    display: none; margin-top: 8px; border-radius: 4px;
+    background: var(--bg); border: 1px solid var(--border); padding: 8px;
+  }
+  .valve-chart-wrap.visible { display: block; }
+  .chart-toggle {
+    background: transparent; border: 1px solid rgba(56,189,248,0.3);
+    color: var(--blue); font-size: 0.75rem; letter-spacing: 1px;
+    padding: 5px 10px; border-radius: 4px; cursor: pointer;
+    font-family: 'Share Tech Mono', monospace; width: 100%;
+    text-transform: uppercase; transition: all 0.2s;
+  }
+  .chart-toggle:hover { background: rgba(56,189,248,0.08); }
+
+  /* Configuration selector */
+  .config-section {
+    margin: 8px 0; padding: 10px; border-radius: 4px;
+    background: rgba(56,189,248,0.05);
+    border: 1px solid rgba(56,189,248,0.15);
+  }
+  .config-section label { color: var(--blue); }
+  .config-section select { border-color: rgba(56,189,248,0.3); margin-bottom: 8px; }
+  .parts-grid {
+    display: grid; grid-template-columns: 1fr; gap: 6px;
+  }
+  .part-row {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .part-row label {
+    font-size: 0.7rem; color: var(--muted); min-width: 44px;
+    margin-bottom: 0; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .part-row select {
+    flex: 1; margin-bottom: 0; font-size: 0.85rem; padding: 6px 10px;
+    border-color: var(--border); color: var(--text);
+  }
+
+  /* PSI selector — standalone section */
+  .psi-selector-section {
+    background: rgba(56,189,248,0.04);
+    border: 1px solid rgba(56,189,248,0.2);
+    border-radius: 6px; padding: 14px; margin-bottom: 12px;
+  }
+  .psi-selector-title {
+    font-size: 0.7rem; color: var(--blue); letter-spacing: 1.5px;
+    text-transform: uppercase; font-family: 'Share Tech Mono', monospace;
+    margin-bottom: 8px;
+  }
+  .psi-row {
+    display: flex; gap: 6px; align-items: flex-end; margin-bottom: 8px;
+  }
+  .psi-row > div { flex: 1; }
+  .psi-row label { font-size: 0.7rem; color: var(--muted); margin-bottom: 3px; }
+  .psi-row input[type="number"], .psi-row select {
+    margin-bottom: 0; font-size: 0.9rem; padding: 7px 10px;
+  }
+  .psi-apply-btn {
+    background: rgba(56,189,248,0.15); border: 1px solid rgba(56,189,248,0.4);
+    color: var(--blue); font-size: 0.75rem; letter-spacing: 1px;
+    padding: 7px 10px; border-radius: 4px; cursor: pointer;
+    font-family: 'Share Tech Mono', monospace; text-transform: uppercase;
+    transition: all 0.2s; white-space: nowrap; align-self: flex-end;
+    flex-shrink: 0;
+  }
+  .psi-apply-btn:hover { background: rgba(56,189,248,0.25); }
+  .psi-result {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 4px; padding: 7px 12px; margin-bottom: 6px; display: none;
+  }
+  .psi-result.visible { display: flex; }
+  .psi-result-label { font-size: 0.7rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .psi-result-val {
+    font-family: 'Share Tech Mono', monospace; font-size: 1.1rem; color: var(--fuel); font-weight: bold;
+  }
+  .psi-autofill-note {
+    font-size: 0.68rem; color: rgba(34,197,94,0.7);
+    font-family: 'Share Tech Mono', monospace; letter-spacing: 1px; display: none;
+  }
+  .psi-autofill-note.visible { display: block; }
+  .preset-psi-btns {
+    display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px;
+  }
+  .preset-psi-btn {
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--muted); font-size: 0.68rem; letter-spacing: 1px;
+    padding: 4px 8px; border-radius: 3px; cursor: pointer;
+    font-family: 'Share Tech Mono', monospace; transition: all 0.15s;
+  }
+  .preset-psi-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .preset-psi-btn.active { border-color: var(--blue); color: var(--blue); background: rgba(56,189,248,0.1); }
+
+  /* Buttons */
+  .btn-row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+  button {
+    flex: 1; padding: 11px; border: none; border-radius: 4px;
+    font-family: 'Rajdhani', sans-serif; font-size: 0.95rem; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase; cursor: pointer; transition: all 0.2s;
+    min-width: 80px;
+  }
+  #startBtn { background: var(--accent); color: #000; }
+  #startBtn:hover { background: #ffbe33; }
+  #previewBtn {
+    background: transparent; color: var(--blue);
+    border: 1px solid rgba(56,189,248,0.4);
+  }
+  #previewBtn:hover { background: rgba(56,189,248,0.08); border-color: var(--blue); }
+  #resetBtn {
+    background: transparent; color: var(--muted); border: 1px solid var(--border);
+  }
+  #resetBtn:hover { border-color: var(--text); color: var(--text); }
+
+  /* Tank wrapper */
+  .tank-wrapper { display: flex; flex-direction: column; gap: 16px; }
+
+  /* Status bar */
+  .status-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.75rem; letter-spacing: 1.5px; padding: 4px 10px;
+    border-radius: 20px; text-transform: uppercase;
+    font-family: 'Share Tech Mono', monospace;
+    background: rgba(139,148,158,0.1); border: 1px solid var(--border); color: var(--muted);
+  }
+  .status-badge.active { background: rgba(34,197,94,0.1); border-color: var(--fuel); color: var(--fuel); }
+  .status-badge.preview { background: rgba(56,189,248,0.1); border-color: var(--blue); color: var(--blue); }
+  .status-badge.done { background: rgba(246,168,0,0.1); border-color: var(--accent); color: var(--accent); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .active .dot { animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  /* Tank container */
+  .tank-container {
+    position: relative; width: 100%; height: 320px;
+    background: #1c2128; border: 2px solid var(--border);
+    border-radius: 6px; overflow: hidden;
+  }
+  .tank-container::before {
+    content: ''; position: absolute; inset: 8px;
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 4px; pointer-events: none; z-index: 3;
+  }
+  .fuel-body {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 0%;
+    background: linear-gradient(180deg, #34d96f 0%, var(--fuel) 40%, var(--fuel-dark) 100%);
+    transition: height 0.4s ease; z-index: 1;
+  }
+  .fuel-body::after {
+    content: ''; position: absolute; top: -8px; left: -20px; right: -20px; height: 16px;
+    background: radial-gradient(ellipse 60% 8px at 50% 100%, rgba(52,217,111,0.6), transparent);
+    animation: wave 2s ease-in-out infinite;
+  }
+  @keyframes wave {
+    0%,100% { transform: translateX(0) scaleY(1); }
+    50% { transform: translateX(10px) scaleY(1.3); }
+  }
+
+  /* Preview overlay lines */
+  .preview-line {
+    position: absolute; left: 0; right: 0; height: 2px; z-index: 7;
+    display: none; pointer-events: none;
+  }
+  .preview-line.start-line { background: rgba(246,168,0,0.7); }
+  .preview-line.target-line { background: rgba(56,189,248,0.8); }
+  .preview-line-label {
+    position: absolute; right: 46px; font-size: 0.62rem;
+    font-family: 'Share Tech Mono', monospace;
+    padding: 1px 5px; border-radius: 2px; white-space: nowrap;
+    transform: translateY(-100%);
+  }
+  .start-line .preview-line-label { background: rgba(246,168,0,0.15); color: var(--accent); }
+  .target-line .preview-line-label { background: rgba(56,189,248,0.15); color: var(--blue); }
+
+  /* Preview info overlay */
+  .preview-overlay {
+    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    background: rgba(13,17,23,0.9); border: 1px solid rgba(56,189,248,0.3);
+    border-radius: 6px; padding: 10px 16px; z-index: 8; display: none;
+    white-space: nowrap;
+  }
+  .preview-overlay.visible { display: flex; gap: 24px; }
+  .prev-stat { text-align: center; }
+  .prev-stat-val {
+    font-family: 'Share Tech Mono', monospace; font-size: 1rem; color: var(--blue); display: block;
+  }
+  .prev-stat-lbl { font-size: 0.65rem; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+
+  /* Tick marks */
+  .tick-marks {
+    position: absolute; right: 10px; top: 0; bottom: 0;
+    display: flex; flex-direction: column; justify-content: space-between;
+    z-index: 4; padding: 8px 0;
+  }
+  .tick {
+    display: flex; align-items: center; gap: 4px;
+    font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; color: var(--muted);
+  }
+  .tick::before {
+    content: ''; display: block; width: 8px; height: 1px; background: var(--border);
+  }
+
+  /* Left litre scale */
+  .litre-marks {
+    position: absolute; left: 8px; top: 0; bottom: 0;
+    display: flex; flex-direction: column; justify-content: space-between;
+    z-index: 4; padding: 8px 0;
+  }
+  .litre-tick {
+    display: flex; align-items: center; gap: 4px;
+    font-family: 'Share Tech Mono', monospace; font-size: 0.62rem;
+    color: var(--accent); white-space: nowrap;
+  }
+  .litre-tick::after {
+    content: ''; display: block; width: 8px; height: 1px;
+    background: rgba(246,168,0,0.35);
+  }
+
+  /* Tank label */
+  .tank-label {
+    position: absolute; top: 12px; left: 12px; font-size: 0.65rem;
+    letter-spacing: 2px; color: rgba(255,255,255,0.12);
+    text-transform: uppercase; font-family: 'Share Tech Mono', monospace; z-index: 4;
+  }
+
+  /* Components */
+  .component { position: absolute; z-index: 5; }
+  .breather {
+    top: -2px; left: 30px; width: 14px; height: 60px;
+    border: 3px solid #555; border-bottom: none; border-radius: 4px 4px 0 0;
+  }
+  .pilot-line {
+    top: -2px; left: 50%; transform: translateX(-50%);
+    width: 80px; height: 10px; border-top: 3px solid #555;
+  }
+  .v-float-stem {
+    top: 0; left: 50%; transform: translateX(-50%);
+    width: 8px; height: 40px; background: #888; border-radius: 2px;
+  }
+  .v-float-ball {
+    top: 30px; left: 50%; transform: translateX(-50%);
+    width: 24px; height: 24px;
+    background: radial-gradient(circle at 30% 30%, #ccc, #666);
+    border-radius: 50%; border: 2px solid #888;
+    transition: top 0.4s ease; z-index: 6;
+  }
+  .fill-valve {
+    top: 50%; right: -14px; transform: translateY(-50%);
+    width: 28px; height: 28px;
+    background: radial-gradient(circle at 35% 35%, #999, #333);
+    border-radius: 50%; border: 3px solid #555;
+  }
+  .right-pipe {
+    top: 50%; right: -2px; transform: translateY(-50%);
+    width: 16px; height: 6px; background: #555;
+  }
+
+  /* Component labels */
+  .component-labels {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none; z-index: 10;
+  }
+  .clabel {
+    position: absolute; font-size: 0.65rem; letter-spacing: 1px;
+    color: rgba(230,237,243,0.5); font-family: 'Share Tech Mono', monospace; white-space: nowrap;
+  }
+
+  /* Progress */
+  .progress-bar-wrap {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 4px; height: 10px; overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--fuel-dark), var(--fuel));
+    transition: width 0.4s ease; border-radius: 4px;
+  }
+  .progress-label {
+    display: flex; justify-content: space-between;
+    font-family: 'Share Tech Mono', monospace; font-size: 0.75rem;
+    color: var(--muted); margin-top: 6px;
+  }
+
+  /* Stats grid */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stat-box {
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 14px; text-align: center; position: relative; overflow: hidden;
+  }
+  .stat-box::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 2px; background: var(--accent);
+  }
+  .stat-value {
+    font-family: 'Share Tech Mono', monospace; font-size: 1.5rem;
+    color: var(--accent); display: block; line-height: 1.2;
+  }
+  .stat-label { font-size: 0.72rem; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 4px; }
+  .stat-box.highlight::before { background: var(--fuel); }
+  .stat-box.highlight .stat-value { color: var(--fuel); }
+
+  footer {
+    margin-top: 24px; font-size: 0.7rem; color: var(--muted);
+    letter-spacing: 1px; font-family: 'Share Tech Mono', monospace; text-align: center;
+  }
+
+  /* Generate Summary button */
+  #genSummaryBtn {
+    width: 100%; margin-top: 4px;
+    background: transparent; border: 1px solid var(--accent);
+    color: var(--accent); font-size: 0.85rem; letter-spacing: 2px;
+    padding: 10px; border-radius: 4px; cursor: pointer;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700;
+    text-transform: uppercase; transition: all 0.2s;
+  }
+  #genSummaryBtn:hover { background: rgba(246,168,0,0.1); }
+
+  /* Summary card */
+  .summary-card {
+    display: none; margin-top: 4px;
+    background: var(--panel); border: 1px solid var(--accent);
+    border-radius: 8px; overflow: hidden;
+  }
+  .summary-card.visible { display: block; }
+  .summary-header {
+    background: rgba(246,168,0,0.1);
+    border-bottom: 1px solid rgba(246,168,0,0.3);
+    padding: 12px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .summary-header-title {
+    font-size: 0.85rem; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--accent);
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .summary-header-time {
+    font-size: 0.7rem; color: var(--muted);
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .summary-body { padding: 14px 16px; }
+  .summary-section { margin-bottom: 14px; }
+  .summary-section:last-child { margin-bottom: 0; }
+  .summary-section-title {
+    font-size: 0.68rem; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--accent); font-family: 'Share Tech Mono', monospace;
+    margin-bottom: 8px; padding-bottom: 4px;
+    border-bottom: 1px solid rgba(246,168,0,0.15);
+  }
+  .summary-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .summary-row {
+    display: flex; flex-direction: column;
+    background: var(--bg); border-radius: 4px; padding: 8px 10px;
+  }
+  .summary-row-label {
+    font-size: 0.65rem; color: var(--muted); letter-spacing: 1px;
+    text-transform: uppercase; font-family: 'Share Tech Mono', monospace;
+    margin-bottom: 2px;
+  }
+  .summary-row-value {
+    font-size: 0.95rem; color: var(--text); font-family: 'Share Tech Mono', monospace;
+    font-weight: 600;
+  }
+  .summary-row-value.accent { color: var(--accent); }
+  .summary-row-value.green  { color: var(--fuel); }
+  .summary-row-value.blue   { color: var(--blue); }
+  .summary-footer {
+    padding: 10px 16px; border-top: 1px solid var(--border);
+    display: flex; justify-content: flex-end;
+  }
+  #printBtn {
+    background: var(--accent); color: #000;
+    border: none; border-radius: 4px; padding: 8px 18px;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700;
+    font-size: 0.9rem; letter-spacing: 2px; text-transform: uppercase;
+    cursor: pointer; transition: all 0.2s;
+  }
+  #printBtn:hover { background: #ffbe33; }
+
+  /* Print styles — only show summary card */
+  @media print {
+    body * { visibility: hidden; }
+    .summary-card, .summary-card * { visibility: visible; }
+    .summary-card {
+      position: fixed; top: 0; left: 0; width: 100%;
+      border: none; display: block !important;
+      background: #fff; color: #000;
+    }
+    .summary-header { background: #f5f5f5; border-bottom: 1px solid #ccc; }
+    .summary-header-title { color: #333; }
+    .summary-header-time { color: #666; }
+    .summary-section-title { color: #c47a00; }
+    .summary-row { background: #f9f9f9; border: 1px solid #eee; }
+    .summary-row-label { color: #666; }
+    .summary-row-value { color: #111; }
+    .summary-row-value.accent { color: #c47a00; }
+    .summary-row-value.green  { color: #15803d; }
+    .summary-row-value.blue   { color: #0284c7; }
+    .summary-footer { display: none; }
+    #printBtn { display: none; }
+  }
+  hr.divider { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⛽ Tank Fill Calculator</h1>
+  <p>Mining Truck Refuelling System — Real-Time Simulation</p>
+</header>
+
+<div class="main-grid">
+  <!-- ── LEFT PANEL ── -->
+  <div class="panel">
+    <div class="panel-title">// Configuration</div>
+
+    <!-- 1. VALVE SELECTOR -->
+    <div class="valve-section">
+      <label>Select Filling Valve</label>
+      <select id="valveSelect" onchange="onValveChange()">
+        <option value="none">— No Valve Selected —</option>
+        <option value="valve1">Valve 1 (50–1500 LPM)</option>
+        <option value="valve2">Valve 2 (50–1000 LPM)</option>
+        <option value="valve3">Valve 3 (50–800 LPM)</option>
+        <option value="valve4">Valve 4 (50–600 LPM)</option>
+        <option value="valve5">Valve 5 (50–400 LPM)</option>
+        <option value="valve6">Valve 6 (50–200 LPM)</option>
+      </select>
+
+      <!-- Configuration selector -->
+      <div class="config-section">
+        <label>Configuration</label>
+        <select id="configSelect" onchange="onConfigChange()">
+          <option value="config1">Configuration 1</option>
+          <option value="config2">Configuration 2</option>
+        </select>
+        <div class="parts-grid" id="partsGrid">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+      <div class="psi-display">
+        <span class="psi-label">Nozzle Inlet Pressure</span>
+        <span class="psi-value" id="psiValue">— PSI</span>
+      </div>
+      <div class="psi-warn" id="psiWarn">⚠ Flow rate exceeds valve range</div>
+
+      <button class="chart-toggle" onclick="toggleValveChart()">📈 Show Valve Curve</button>
+      <div class="valve-chart-wrap" id="valveChartWrap">
+        <canvas id="valveChart" height="160"></canvas>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- 2. PSI → FLOW LOOKUP -->
+    <div class="psi-selector-section" id="psiSelectorSection" style="display:none">
+      <div class="panel-title" style="color:var(--blue);border-color:rgba(56,189,248,0.2);margin-bottom:10px;">// Pressure → Flow Lookup</div>
+
+      <label style="color:var(--blue);">Select Nozzle Pressure (PSI)</label>
+      <div class="preset-psi-btns" id="presetPsiBtns"></div>
+
+      <div class="psi-row">
+        <div>
+          <label>Or Enter Custom PSI</label>
+          <input type="number" id="customPsiInput" min="0" step="0.5" placeholder="e.g. 45" oninput="onCustomPsiInput()">
+        </div>
+        <button class="psi-apply-btn" onclick="applyPsiToFlow()">→ Apply</button>
+      </div>
+
+      <div class="psi-result" id="psiResult">
+        <span class="psi-result-label">Resulting Flow Rate</span>
+        <span class="psi-result-val" id="psiResultVal">-- LPM</span>
+      </div>
+      <div class="psi-autofill-note" id="psiAutofillNote">✓ Flow rate field updated</div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- 3. TANK CONFIG INPUTS -->
+    <label>Tank Capacity (Litres)</label>
+    <input type="number" id="customCapacity" min="1" placeholder="e.g. 500000" oninput="onInputChange()">
+
+    <label>Current Fuel Level (%)</label>
+    <input type="number" id="currentLevel" min="0" max="99" value="10" placeholder="0–99" oninput="onInputChange()">
+
+    <label>Flow Rate (Litres / min)</label>
+    <input type="number" id="flowRate" min="1" value="1500" placeholder="e.g. 1500" oninput="onFlowChange()">
+
+    <label>Target Fill Level (%)</label>
+    <input type="number" id="targetLevel" min="1" max="100" value="95" placeholder="e.g. 95" oninput="onInputChange()">
+
+    <hr class="divider">
+
+    <!-- 4. ACTION BUTTONS -->
+    <div class="btn-row">
+      <button id="previewBtn" onclick="previewSetup()">👁 Preview</button>
+      <button id="startBtn" onclick="startSimulation()">▶ Start</button>
+      <button id="resetBtn" onclick="resetSimulation()">↺ Reset</button>
+    </div>
+  </div>
+
+  <!-- ── RIGHT PANEL ── -->
+  <div class="tank-wrapper">
+    <!-- Status row -->
+    <div class="status-row">
+      <div class="status-badge" id="statusBadge"><span class="dot"></span> IDLE</div>
+      <span id="truckName" style="font-size:0.85rem;color:var(--muted);font-family:'Share Tech Mono',monospace;"></span>
+    </div>
+
+    <!-- Tank Visual -->
+    <div class="tank-container" id="tankViz">
+      <div class="tank-label">FUEL TANK</div>
+
+      <!-- Hardware components -->
+      <div class="component breather"></div>
+      <div class="component pilot-line"></div>
+      <div class="component v-float-stem"></div>
+      <div class="component v-float-ball" id="floatBall"></div>
+      <div class="component right-pipe"></div>
+      <div class="component fill-valve"></div>
+
+      <!-- Fuel body -->
+      <div class="fuel-body" id="fuelBody"></div>
+
+      <!-- Preview lines (start level + target level) -->
+      <div class="preview-line start-line" id="startLine">
+        <span class="preview-line-label" id="startLineLabel">Start</span>
+      </div>
+      <div class="preview-line target-line" id="targetLine">
+        <span class="preview-line-label" id="targetLineLabel">Target</span>
+      </div>
+
+      <!-- Preview info overlay -->
+      <div class="preview-overlay" id="previewOverlay">
+        <div class="prev-stat"><span class="prev-stat-val" id="prevLitres">--</span><span class="prev-stat-lbl">Litres to Add</span></div>
+        <div class="prev-stat"><span class="prev-stat-val" id="prevTime">--</span><span class="prev-stat-lbl">Est. Fill Time</span></div>
+        <div class="prev-stat"><span class="prev-stat-val" id="prevStart">--%</span><span class="prev-stat-lbl">Start Level</span></div>
+        <div class="prev-stat"><span class="prev-stat-val" id="prevTarget">--%</span><span class="prev-stat-lbl">Target Level</span></div>
+      </div>
+
+      <!-- Left litre scale -->
+      <div class="litre-marks" id="litreMarks">
+        <div class="litre-tick" id="lmark4">-- L</div>
+        <div class="litre-tick" id="lmark3">-- L</div>
+        <div class="litre-tick" id="lmark2">-- L</div>
+        <div class="litre-tick" id="lmark1">-- L</div>
+        <div class="litre-tick" id="lmark0">0 L</div>
+      </div>
+
+      <!-- Right % ticks -->
+      <div class="tick-marks">
+        <div class="tick">100%</div>
+        <div class="tick">75%</div>
+        <div class="tick">50%</div>
+        <div class="tick">25%</div>
+        <div class="tick">0%</div>
+      </div>
+
+      <!-- Component labels -->
+      <div class="component-labels">
+        <div class="clabel" style="top:30px;left:6px">Breather Hose</div>
+        <div class="clabel" style="top:4px;left:44%;transform:translateX(-50%)">Vertical Float</div>
+        <div class="clabel" style="top:4px;right:80px">Pilot Line</div>
+        <div class="clabel" style="top:44%;right:2px;writing-mode:vertical-rl;text-orientation:mixed;">Fuel Filling Valve</div>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="progress-label">
+        <span id="pctLabel">0%</span>
+        <span id="volLabel">0 L</span>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-box"><span class="stat-value" id="statTime">--:--</span><div class="stat-label">Time Remaining</div></div>
+      <div class="stat-box"><span class="stat-value" id="statElapsed">00:00</span><div class="stat-label">Elapsed Time</div></div>
+      <div class="stat-box highlight"><span class="stat-value" id="statFuelAdded">0 L</span><div class="stat-label">Fuel Added</div></div>
+      <div class="stat-box highlight"><span class="stat-value" id="statFlow">0 L/min</span><div class="stat-label">Flow Rate</div></div>
+    </div>
+
+    <!-- Generate Summary button -->
+    <button id="genSummaryBtn" onclick="generateSummary()">📋 Generate Parts Summary</button>
+
+    <!-- Summary Card -->
+    <div class="summary-card" id="summaryCard">
+      <div class="summary-header">
+        <span class="summary-header-title">// Refuelling Job Summary</span>
+        <span class="summary-header-time" id="summaryTimestamp"></span>
+      </div>
+      <div class="summary-body">
+
+        <!-- Tank -->
+        <div class="summary-section">
+          <div class="summary-section-title">Tank Parameters</div>
+          <div class="summary-rows">
+            <div class="summary-row"><span class="summary-row-label">Tank Capacity</span><span class="summary-row-value accent" id="sum-capacity">—</span></div>
+            <div class="summary-row"><span class="summary-row-label">Litres to Add</span><span class="summary-row-value accent" id="sum-litres">—</span></div>
+            <div class="summary-row"><span class="summary-row-label">Start Level</span><span class="summary-row-value" id="sum-start">—</span></div>
+            <div class="summary-row"><span class="summary-row-label">Target Level</span><span class="summary-row-value" id="sum-target">—</span></div>
+          </div>
+        </div>
+
+        <!-- Valve -->
+        <div class="summary-section">
+          <div class="summary-section-title">Valve & Pressure</div>
+          <div class="summary-rows">
+            <div class="summary-row"><span class="summary-row-label">Valve Selected</span><span class="summary-row-value blue" id="sum-valve">—</span></div>
+            <div class="summary-row"><span class="summary-row-label">Nozzle Pressure</span><span class="summary-row-value blue" id="sum-psi">—</span></div>
+          </div>
+        </div>
+
+        <!-- Configuration & Parts -->
+        <div class="summary-section">
+          <div class="summary-section-title">Configuration & Parts</div>
+          <div class="summary-rows" id="sum-parts-grid">
+            <!-- populated by JS -->
+          </div>
+        </div>
+
+        <!-- Flow -->
+        <div class="summary-section">
+          <div class="summary-section-title">Flow & Time</div>
+          <div class="summary-rows">
+            <div class="summary-row"><span class="summary-row-label">Flow Rate</span><span class="summary-row-value green" id="sum-flow">—</span></div>
+            <div class="summary-row"><span class="summary-row-label">Est. Fill Time</span><span class="summary-row-value green" id="sum-time">—</span></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="summary-footer">
+        <button id="printBtn" onclick="window.print()">🖨 Print / Export</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>Designed for Mining Operations &nbsp;|&nbsp; SharePoint / Web Embeddable &nbsp;|&nbsp; v2.0</footer>
+
+<script>
+// ─────────────────────────────────────────────
+//  VALVE DATA  — add more valves here later
+// ─────────────────────────────────────────────
+// Shared pressure/flow curve for all valves
+const SHARED_CURVE = [
+  [50,  4],  [100, 5],  [150, 5.5],[200, 6],
+  [250, 6.5],[300, 7],  [350, 8],  [400, 9],  [450, 10],
+  [500, 11], [550, 12], [600, 13], [650, 14], [700, 16],
+  [750, 18], [800, 21], [850, 24], [900, 28], [950, 32],
+  [1000,37], [1050,42], [1100,48], [1150,55], [1200,63],
+  [1250,70], [1300,78], [1350,86], [1400,94], [1450,102],[1500,109]
+];
+
+// Each valve uses the shared curve, clipped to its maxFlow
+function makeCurve(maxFlow) {
+  return SHARED_CURVE.filter(p => p[0] <= maxFlow);
+}
+
+const VALVES = {
+  valve1: { name: 'Valve 1', maxFlow: 1500, curve: makeCurve(1500) },
+  valve2: { name: 'Valve 2', maxFlow: 1000, curve: makeCurve(1000) },
+  valve3: { name: 'Valve 3', maxFlow:  800, curve: makeCurve(800)  },
+  valve4: { name: 'Valve 4', maxFlow:  600, curve: makeCurve(600)  },
+  valve5: { name: 'Valve 5', maxFlow:  400, curve: makeCurve(400)  },
+  valve6: { name: 'Valve 6', maxFlow:  200, curve: makeCurve(200)  },
+};
+
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+let capacity = 0;
+let simInterval = null;
+let elapsed = 0;
+let currentLitres = 0;
+let targetLitres = 0;
+let flowLPmin = 0;
+let valveChartInstance = null;
+let valveChartVisible = false;
+let isPreviewing = false;
+
+// ─────────────────────────────────────────────
+//  HELPERS
+// ─────────────────────────────────────────────
+function getCapacity()    { return parseFloat(document.getElementById('customCapacity').value) || 0; }
+function getCurrentPct()  { return Math.min(99, Math.max(0, parseFloat(document.getElementById('currentLevel').value) || 0)); }
+function getTargetPct()   { return Math.min(100, Math.max(1, parseFloat(document.getElementById('targetLevel').value) || 95)); }
+function getFlow()        { return parseFloat(document.getElementById('flowRate').value) || 0; }
+
+function formatLitres(l) {
+  if (l === 0) return '0 L';
+  return l >= 1000
+    ? (l / 1000).toLocaleString(undefined, {maximumFractionDigits: 1}) + 'k L'
+    : Math.round(l).toLocaleString() + ' L';
+}
+function formatTime(s) {
+  if (!isFinite(s) || s < 0) return '--:--';
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60);
+  if (h > 0) return `${h}h ${String(m).padStart(2,'0')}m`;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+// ─────────────────────────────────────────────
+//  CONFIGURATION PARTS DATA
+// ─────────────────────────────────────────────
+const CONFIGURATIONS = {
+  config1: {
+    label: 'Configuration 1',
+    parts: [
+      { label: 'Part A', options: ['— Select Part A —', 'Part A — Option 1', 'Part A — Option 2', 'Part A — Option 3'] },
+      { label: 'Part B', options: ['— Select Part B —', 'Part B — Option 1', 'Part B — Option 2', 'Part B — Option 3'] },
+      { label: 'Part C', options: ['— Select Part C —', 'Part C — Option 1', 'Part C — Option 2', 'Part C — Option 3'] },
+    ]
+  },
+  config2: {
+    label: 'Configuration 2',
+    parts: [
+      { label: 'Part D', options: ['— Select Part D —', 'Part D — Option 1', 'Part D — Option 2', 'Part D — Option 3'] },
+      { label: 'Part E', options: ['— Select Part E —', 'Part E — Option 1', 'Part E — Option 2', 'Part E — Option 3'] },
+      { label: 'Part F', options: ['— Select Part F —', 'Part F — Option 1', 'Part F — Option 2', 'Part F — Option 3'] },
+    ]
+  }
+};
+
+function onConfigChange() {
+  renderParts();
+}
+
+function renderParts() {
+  const ck = document.getElementById('configSelect').value;
+  const config = CONFIGURATIONS[ck];
+  const grid = document.getElementById('partsGrid');
+  if (!config) { grid.innerHTML = ''; return; }
+
+  grid.innerHTML = config.parts.map((part, i) => `
+    <div class="part-row">
+      <label>${part.label}</label>
+      <select id="partSelect_${i}">
+        ${part.options.map(o => `<option>${o}</option>`).join('')}
+      </select>
+    </div>
+  `).join('');
+}
+
+// ─────────────────────────────────────────────
+//  VALVE PSI INTERPOLATION
+// ─────────────────────────────────────────────
+function getPSI(valveKey, lpm) {
+  const v = VALVES[valveKey];
+  if (!v) return null;
+  const curve = v.curve;
+  if (lpm <= curve[0][0]) return curve[0][1];
+  if (lpm >= curve[curve.length-1][0]) return curve[curve.length-1][1];
+  for (let i = 0; i < curve.length - 1; i++) {
+    const [x0,y0] = curve[i], [x1,y1] = curve[i+1];
+    if (lpm >= x0 && lpm <= x1) {
+      const t = (lpm - x0) / (x1 - x0);
+      return +(y0 + t * (y1 - y0)).toFixed(1);
+    }
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────────
+//  VALVE UI
+// ─────────────────────────────────────────────
+function onValveChange() {
+  updatePSIDisplay();
+  if (valveChartVisible) { valveChartVisible = false; renderValveChart(); }
+  document.getElementById('valveChartWrap').classList.remove('visible');
+  const vk = document.getElementById('valveSelect').value;
+  const sec = document.getElementById('psiSelectorSection');
+  if (vk === 'none') {
+    sec.style.display = 'none';
+  } else {
+    sec.style.display = 'block';
+    buildPresetPsiButtons(vk);
+    clearPsiResult();
+  }
+}
+
+// Build preset PSI quick-buttons from the valve's curve
+function buildPresetPsiButtons(vk) {
+  const v = VALVES[vk];
+  if (!v) return;
+  // Pick ~10 evenly spaced PSI values from the curve's PSI range
+  const allPSI = v.curve.map(p => p[1]);
+  const minP = Math.ceil(allPSI[0]);
+  const maxP = Math.floor(allPSI[allPSI.length - 1]);
+  const step = Math.round((maxP - minP) / 9 / 5) * 5 || 5;
+  const presets = [];
+  for (let p = minP; p <= maxP; p += step) presets.push(p);
+  if (presets[presets.length-1] !== maxP) presets.push(maxP);
+
+  const container = document.getElementById('presetPsiBtns');
+  container.innerHTML = '';
+  presets.forEach(psi => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-psi-btn';
+    btn.textContent = psi + ' PSI';
+    btn.onclick = () => {
+      document.querySelectorAll('.preset-psi-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('customPsiInput').value = psi;
+      lookupFlowFromPSI(psi, vk);
+    };
+    container.appendChild(btn);
+  });
+}
+
+function onCustomPsiInput() {
+  document.querySelectorAll('.preset-psi-btn').forEach(b => b.classList.remove('active'));
+  clearPsiResult();
+}
+
+function applyPsiToFlow() {
+  const vk = document.getElementById('valveSelect').value;
+  if (vk === 'none') return;
+  const psi = parseFloat(document.getElementById('customPsiInput').value);
+  if (isNaN(psi)) return;
+  lookupFlowFromPSI(psi, vk);
+}
+
+// Reverse lookup: given PSI, find LPM by walking the curve
+function getLPMfromPSI(valveKey, targetPSI) {
+  const v = VALVES[valveKey];
+  if (!v) return null;
+  const curve = v.curve;
+  if (targetPSI <= curve[0][1]) return curve[0][0];
+  if (targetPSI >= curve[curve.length-1][1]) return curve[curve.length-1][0];
+  for (let i = 0; i < curve.length - 1; i++) {
+    const [x0,y0] = curve[i], [x1,y1] = curve[i+1];
+    if (targetPSI >= y0 && targetPSI <= y1) {
+      const t = (targetPSI - y0) / (y1 - y0);
+      return +(x0 + t * (x1 - x0)).toFixed(0);
+    }
+  }
+  return null;
+}
+
+function lookupFlowFromPSI(psi, vk) {
+  const lpm = getLPMfromPSI(vk, psi);
+  const resultEl = document.getElementById('psiResult');
+  const valEl    = document.getElementById('psiResultVal');
+  const noteEl   = document.getElementById('psiAutofillNote');
+  const v = VALVES[vk];
+
+  if (lpm === null || psi > v.curve[v.curve.length-1][1]) {
+    valEl.textContent = '-- LPM';
+    valEl.style.color = 'var(--danger)';
+    resultEl.classList.add('visible');
+    noteEl.classList.remove('visible');
+    return;
+  }
+
+  valEl.textContent = lpm + ' LPM';
+  valEl.style.color = 'var(--fuel)';
+  resultEl.classList.add('visible');
+
+  // Auto-fill the flow rate field
+  document.getElementById('flowRate').value = lpm;
+  onFlowChange();
+  noteEl.classList.add('visible');
+  setTimeout(() => noteEl.classList.remove('visible'), 2500);
+}
+
+function clearPsiResult() {
+  document.getElementById('psiResult').classList.remove('visible');
+  document.getElementById('psiAutofillNote').classList.remove('visible');
+}
+
+function onFlowChange()  { updatePSIDisplay(); onInputChange(); }
+function onInputChange() { if (isPreviewing) previewSetup(); }
+
+function updatePSIDisplay() {
+  const vk = document.getElementById('valveSelect').value;
+  const lpm = getFlow();
+  const warn = document.getElementById('psiWarn');
+  const psiEl = document.getElementById('psiValue');
+
+  if (vk === 'none') { psiEl.textContent = '— PSI'; warn.style.display = 'none'; return; }
+  const v = VALVES[vk];
+  if (lpm > v.maxFlow) {
+    psiEl.textContent = '— PSI';
+    warn.textContent = `⚠ Flow rate exceeds valve range (max ${v.maxFlow} LPM)`;
+    warn.style.display = 'block';
+  } else {
+    warn.style.display = 'none';
+    const psi = getPSI(vk, lpm);
+    psiEl.textContent = psi !== null ? psi + ' PSI' : '— PSI';
+  }
+}
+
+function toggleValveChart() {
+  valveChartVisible = !valveChartVisible;
+  const wrap = document.getElementById('valveChartWrap');
+  wrap.classList.toggle('visible', valveChartVisible);
+  if (valveChartVisible) renderValveChart();
+  document.querySelector('.chart-toggle').textContent =
+    valveChartVisible ? '📈 Hide Valve Curve' : '📈 Show Valve Curve';
+}
+
+function renderValveChart() {
+  const vk = document.getElementById('valveSelect').value;
+  const canvas = document.getElementById('valveChart');
+  if (valveChartInstance) { valveChartInstance.destroy(); valveChartInstance = null; }
+  if (!valveChartVisible || vk === 'none') return;
+
+  const v = VALVES[vk];
+  const currentFlow = getFlow();
+  const currentPSI  = getPSI(vk, currentFlow);
+
+  valveChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      datasets: [
+        {
+          label: 'Pressure Curve',
+          data: v.curve.map(([x,y]) => ({x, y})),
+          borderColor: '#38bdf8', borderWidth: 2,
+          pointRadius: 0, tension: 0.4, fill: false
+        },
+        {
+          label: 'Current Operating Point',
+          data: currentPSI !== null ? [{x: currentFlow, y: currentPSI}] : [],
+          borderColor: '#f6a800', backgroundColor: '#f6a800',
+          pointRadius: 7, pointHoverRadius: 9, showLine: false
+        }
+      ]
+    },
+    options: {
+      animation: false,
+      responsive: true,
+      scales: {
+        x: {
+          type: 'linear', title: { display: true, text: 'Flow Rate (LPM)', color: '#8b949e', font: {size: 10} },
+          ticks: { color: '#8b949e', font: {size: 9} },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        },
+        y: {
+          title: { display: true, text: 'Pressure (PSI)', color: '#8b949e', font: {size: 10} },
+          ticks: { color: '#8b949e', font: {size: 9} },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label === 'Current Operating Point'
+              ? `${ctx.raw.x} LPM → ${ctx.raw.y} PSI`
+              : `${ctx.raw.x} LPM → ${ctx.raw.y} PSI`
+          }
+        }
+      }
+    }
+  });
+}
+
+// ─────────────────────────────────────────────
+//  PREVIEW
+// ─────────────────────────────────────────────
+function previewSetup() {
+  const cap = getCapacity();
+  if (!cap) { alert('Please enter tank capacity first.'); return; }
+  const startPct  = getCurrentPct();
+  const targetPct = getTargetPct();
+  const flow      = getFlow();
+  if (startPct >= targetPct) { alert('Current level must be less than target level.'); return; }
+
+  isPreviewing = true;
+  capacity = cap;
+  updateLitreMarks(cap);
+  document.getElementById('truckName').textContent = cap.toLocaleString() + ' L tank';
+
+  const tankH = document.getElementById('tankViz').offsetHeight;
+
+  // Start line — from bottom
+  const startPx  = tankH - (startPct  / 100) * tankH;
+  const targetPx = tankH - (targetPct / 100) * tankH;
+
+  const startLine  = document.getElementById('startLine');
+  const targetLine = document.getElementById('targetLine');
+  startLine.style.display  = 'block';
+  startLine.style.top      = startPx + 'px';
+  targetLine.style.display = 'block';
+  targetLine.style.top     = targetPx + 'px';
+
+  document.getElementById('startLineLabel').textContent  = `Start: ${startPct}%`;
+  document.getElementById('targetLineLabel').textContent = `Target: ${targetPct}%`;
+
+  // Show current fuel at start level
+  document.getElementById('fuelBody').style.height = startPct + '%';
+
+  // Preview overlay
+  const litresNeeded = (targetPct - startPct) / 100 * cap;
+  const timeEstSec   = flow > 0 ? litresNeeded / flow * 60 : 0;
+  document.getElementById('prevLitres').textContent = formatLitres(litresNeeded);
+  document.getElementById('prevTime').textContent   = flow > 0 ? formatTime(timeEstSec) : '--';
+  document.getElementById('prevStart').textContent  = startPct + '%';
+  document.getElementById('prevTarget').textContent = targetPct + '%';
+  document.getElementById('previewOverlay').classList.add('visible');
+
+  setStatus('preview', '👁 PREVIEW');
+}
+
+function clearPreview() {
+  isPreviewing = false;
+  document.getElementById('startLine').style.display  = 'none';
+  document.getElementById('targetLine').style.display = 'none';
+  document.getElementById('previewOverlay').classList.remove('visible');
+}
+
+// ─────────────────────────────────────────────
+//  SIMULATION
+// ─────────────────────────────────────────────
+function startSimulation() {
+  if (simInterval) return;
+  clearPreview();
+
+  capacity = getCapacity();
+  if (!capacity) { alert('Please enter the tank capacity in litres.'); return; }
+  const startPct  = getCurrentPct();
+  const targetPct = getTargetPct();
+  flowLPmin = getFlow();
+
+  if (!flowLPmin) { alert('Please enter a flow rate.'); return; }
+  if (startPct >= targetPct) { alert('Current level must be less than target level.'); return; }
+
+  currentLitres = (startPct  / 100) * capacity;
+  targetLitres  = (targetPct / 100) * capacity;
+  elapsed = 0;
+
+  document.getElementById('truckName').textContent = capacity.toLocaleString() + ' L tank';
+  updateLitreMarks(capacity);
+  setStatus('active', '● FILLING');
+  document.getElementById('statFlow').textContent = flowLPmin.toLocaleString() + ' L/min';
+
+  simInterval = setInterval(() => {
+    currentLitres = Math.min(targetLitres, currentLitres + flowLPmin / 60);
+    elapsed++;
+    updateVisuals();
+    if (currentLitres >= targetLitres) {
+      clearInterval(simInterval); simInterval = null;
+      setStatus('done', '✓ COMPLETE');
+      document.getElementById('statTime').textContent = '00:00';
+    }
+  }, 100); // 10× speed — change to 1000 for real-time
+}
+
+function updateVisuals() {
+  const pct = currentLitres / capacity * 100;
+  const startPct = getCurrentPct();
+  const startL   = (startPct / 100) * capacity;
+  const added    = currentLitres - startL;
+  const remaining = targetLitres - currentLitres;
+  const timeRemSec = remaining / flowLPmin * 60;
+
+  document.getElementById('fuelBody').style.height = pct + '%';
+
+  const tankH  = document.getElementById('tankViz').offsetHeight;
+  const fuelPx = (pct / 100) * tankH;
+  document.getElementById('floatBall').style.top = Math.max(0, tankH - fuelPx - 12) + 'px';
+
+  const progress = ((currentLitres - startL) / (targetLitres - startL)) * 100;
+  document.getElementById('progressBar').style.width = Math.min(100, progress) + '%';
+  document.getElementById('pctLabel').textContent = pct.toFixed(1) + '%';
+  document.getElementById('volLabel').textContent = Math.round(currentLitres).toLocaleString() + ' L';
+
+  document.getElementById('statTime').textContent      = formatTime(timeRemSec);
+  document.getElementById('statElapsed').textContent   = formatTime(elapsed);
+  document.getElementById('statFuelAdded').textContent = Math.round(added).toLocaleString() + ' L';
+}
+
+function resetSimulation() {
+  if (simInterval) { clearInterval(simInterval); simInterval = null; }
+  clearPreview();
+
+  document.getElementById('fuelBody').style.height = '0%';
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('floatBall').style.top = '0px';
+  document.getElementById('pctLabel').textContent = '0%';
+  document.getElementById('volLabel').textContent = '0 L';
+  document.getElementById('statTime').textContent = '--:--';
+  document.getElementById('statElapsed').textContent = '00:00';
+  document.getElementById('statFuelAdded').textContent = '0 L';
+  document.getElementById('statFlow').textContent = '0 L/min';
+  document.getElementById('truckName').textContent = '';
+  resetLitreMarks();
+  setStatus('idle', '● IDLE');
+}
+
+function setStatus(type, text) {
+  const b = document.getElementById('statusBadge');
+  b.className = 'status-badge ' + type;
+  b.innerHTML = '<span class="dot"></span> ' + text;
+}
+
+// ─────────────────────────────────────────────
+//  LITRE MARKS
+// ─────────────────────────────────────────────
+function updateLitreMarks(cap) {
+  const fracs = [1, 0.75, 0.5, 0.25, 0];
+  fracs.forEach((f, i) => {
+    document.getElementById('lmark' + (4 - i)).textContent = formatLitres(cap * f);
+  });
+}
+function resetLitreMarks() {
+  document.getElementById('lmark0').textContent = '0 L';
+  ['lmark1','lmark2','lmark3','lmark4'].forEach(id => {
+    document.getElementById(id).textContent = '-- L';
+  });
+}
+
+// ─────────────────────────────────────────────
+//  SUMMARY GENERATOR
+// ─────────────────────────────────────────────
+function generateSummary() {
+  const cap      = getCapacity();
+  const startPct = getCurrentPct();
+  const targetPct= getTargetPct();
+  const flow     = getFlow();
+  const vk       = document.getElementById('valveSelect').value;
+  const ck       = document.getElementById('configSelect') ? document.getElementById('configSelect').value : null;
+
+  // Tank
+  document.getElementById('sum-capacity').textContent = cap ? cap.toLocaleString() + ' L' : '—';
+  const litresNeeded = cap ? ((targetPct - startPct) / 100) * cap : 0;
+  document.getElementById('sum-litres').textContent  = cap ? formatLitres(litresNeeded) : '—';
+  document.getElementById('sum-start').textContent   = startPct + '%';
+  document.getElementById('sum-target').textContent  = targetPct + '%';
+
+  // Valve & PSI
+  if (vk && vk !== 'none') {
+    const v = VALVES[vk];
+    document.getElementById('sum-valve').textContent = v.name + ' (max ' + v.maxFlow + ' LPM)';
+    const psi = getPSI(vk, flow);
+    document.getElementById('sum-psi').textContent = psi !== null ? psi + ' PSI' : '—';
+  } else {
+    document.getElementById('sum-valve').textContent = 'No valve selected';
+    document.getElementById('sum-psi').textContent = '—';
+  }
+
+  // Configuration & Parts
+  const partsGrid = document.getElementById('sum-parts-grid');
+  partsGrid.innerHTML = '';
+  if (ck && CONFIGURATIONS[ck]) {
+    const config = CONFIGURATIONS[ck];
+    // Config name row (full width)
+    partsGrid.innerHTML += `<div class="summary-row" style="grid-column:1/-1">
+      <span class="summary-row-label">Configuration</span>
+      <span class="summary-row-value blue">${config.label}</span>
+    </div>`;
+    // Each part
+    config.parts.forEach((part, i) => {
+      const sel = document.getElementById('partSelect_' + i);
+      const val = sel ? sel.value : '—';
+      partsGrid.innerHTML += `<div class="summary-row">
+        <span class="summary-row-label">${part.label}</span>
+        <span class="summary-row-value">${val}</span>
+      </div>`;
+    });
+  } else {
+    partsGrid.innerHTML = '<div class="summary-row" style="grid-column:1/-1"><span class="summary-row-label">Configuration</span><span class="summary-row-value">—</span></div>';
+  }
+
+  // Flow & Time
+  document.getElementById('sum-flow').textContent = flow ? flow.toLocaleString() + ' LPM' : '—';
+  const timeEstSec = (flow && cap) ? litresNeeded / flow * 60 : 0;
+  document.getElementById('sum-time').textContent = (flow && cap) ? formatTime(timeEstSec) : '—';
+
+  // Timestamp
+  const now = new Date();
+  document.getElementById('summaryTimestamp').textContent =
+    now.toLocaleDateString() + '  ' + now.toLocaleTimeString();
+
+  // Show card
+  document.getElementById('summaryCard').classList.add('visible');
+  document.getElementById('summaryCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+window.onload = () => {
+  document.getElementById('fuelBody').style.height = '0%';
+  renderParts();
+};
+</script>
+</body>
+</html>
